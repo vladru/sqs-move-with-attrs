@@ -1,0 +1,49 @@
+{
+    "version": "1.0.0",
+    "description": "Move messages including its attributes from one AWS SQS queue to another.",
+    "engines": {
+        "node": ">8.10"
+    },
+    "main": "dist/sqs-move-with-attrs.js",
+    "types": "dist/sqs-move-with-attrs.d.ts",
+    "bin": {
+        "sqs-move-with-attrs": "dist/cli.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/vladru/sqs-move-with-attrs.git"
+    },
+    "author": "Vlad Ruzov",
+    "license": "ISC",
+    "devDependencies": {
+        "@types/chai": "^4.2.10",
+        "@types/mocha": "^7.0.2",
+        "@types/node": "^13.9.0",
+        "@typescript-eslint/eslint-plugin": "^2.6.0",
+        "@typescript-eslint/parser": "^2.6.0",
+        "aws-sdk-mock": "^5.0.0",
+        "chai": "^4.2.0",
+        "eslint": "^6.6.0",
+        "mocha": "^7.1.0",
+        "mocha-junit-reporter": "^1.23.3",
+        "nyc": "^15.0.0",
+        "ts-node": "^8.6.2",
+        "ts-sinon": "^1.0.25",
+        "typescript": "^3.8.3"
+    },
+    "nyc": {
+        "report-dir": "./reports/coverage"
+    },
+    "scripts": {
+        "esLint": "eslint src/**/*.ts",
+        "esLintFix": "eslint --fix src/**/*.ts",
+        "prepare": "yarn run compile",
+        "compile": "yarn run esLint && tsc",
+        "test": "mocha -r ts-node/register test/*.test.ts --reporter mocha-junit-reporter --reporter-options mochaFile=./reports/junit/report.xml",
+        "testAndCoverage": "nyc -r lcov -e .ts -x \"*.test.ts\" yarn run test",
+        "move": "node dist/cli.js"
+    },
+    "dependencies": {
+        "aws-sdk": "^2.635.0"
+    }
+}
