@@ -2,6 +2,9 @@
 Moves all messages including its attributes from one AWS SQS queue to another.<br>
 Expected moving performance is 10K messages per minute.
 
+[![Build Status](https://travis-ci.org/vladru/sqs-move-with-attrs.svg?branch=master)](https://travis-ci.org/vladru/sqs-move-with-attrs)
+[![Coverage Status](https://coveralls.io/repos/github/vladru/sqs-move-with-attrs/badge.svg?branch=master)](https://coveralls.io/github/vladru/sqs-move-with-attrs?branch=master)
+
 ## Prerequisite
 
 - Node.js 8.10 or later

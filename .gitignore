@@ -1,6 +1,7 @@
 .idea
 *.iml
 .nyc_output
+.coveralls.yml
 dist/cli.d.ts
 coverage/
 node_modules/

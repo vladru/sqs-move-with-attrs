@@ -38,6 +38,7 @@
         "@typescript-eslint/parser": "^2.6.0",
         "aws-sdk-mock": "^5.0.0",
         "chai": "^4.2.0",
+        "coveralls": "^3.0.9",
         "eslint": "^6.6.0",
         "mocha": "^7.1.0",
         "mocha-junit-reporter": "^1.23.3",
@@ -55,7 +56,8 @@
         "prepare": "yarn run compile",
         "compile": "yarn run esLint && tsc",
         "test": "mocha -r ts-node/register test/*.test.ts --reporter mocha-junit-reporter --reporter-options mochaFile=./reports/junit/report.xml",
-        "testAndCoverage": "nyc -r lcov -e .ts -x \"*.test.ts\" yarn run test",
+        "testAndCoverage": "nyc --reporter lcov --extension .ts --exclude \"*.test.ts\" yarn run test",
+        "testAndCoveralls": "nyc --extension .ts --exclude \"*.test.ts\" yarn test && nyc report --reporter=text-lcov | coveralls",
         "move": "node dist/cli.js"
     },
     "dependencies": {
