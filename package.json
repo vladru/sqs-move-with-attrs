@@ -1,5 +1,5 @@
 {
-    "version": "1.0.0",
+    "version": "0.0.0",
     "description": "Move messages including its attributes from one AWS SQS queue to another.",
     "engines": {
         "node": ">8.10"
@@ -11,8 +11,21 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/vladru/sqs-move-with-attrs.git"
+        "url": "git+https://github.com/vladru/sqs-move-with-attrs.git"
     },
+    "publishConfig": {
+        "access": "public"
+    },
+    "keywords": [
+        "aws",
+        "sqs",
+        "move",
+        "typescript"
+    ],
+    "bugs": {
+        "url": "https://github.com/vladru/sqs-move-with-attrs/issues"
+    },
+    "homepage": "https://github.com/vladru/sqs-move-with-attrs#readme",
     "author": "Vlad Ruzov",
     "license": "ISC",
     "devDependencies": {
