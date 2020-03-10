@@ -1,5 +1,6 @@
 .idea
 *.iml
+.nyc_output
 dist/cli.d.ts
 coverage/
 node_modules/
