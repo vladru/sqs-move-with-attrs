@@ -1,14 +1,23 @@
 # sqs-move-with-attrs
-Moves all messages including its attributes from one AWS SQS queue to another.
+Moves all messages including its attributes from one AWS SQS queue to another.<br>
 Expected moving performance is 10K messages per minute.
 
 ## Prerequisite
 
 - Node.js 8.10 or later
-- yarn 1 or later
+- optionally yarn 1 or later
 
 ## Install
-Clone this repo and run
+### Install as command line utility
+```
+npm install -g sqs-move-with-attrs
+```
+or
+```.env
+yarn global add sqs-move-with-attrs
+```
+### Install to local directory
+Clone project repository from github to the local folder and run
 ```
 yarn install
 ```
@@ -19,7 +28,11 @@ Empty configuration object and Default Credential Provider chain are used to cre
 Define AWS_REGION environment variable to specify region used by AWS SDK.   
 
 ## Usage
-In directory of project run
+### if project installed as command line utility
+```
+sqs-move-with-attrs <sourceSQSUrl> <destinationSQSUrl>
+```
+### if project installed to local directory
 ```
 yarn move <sourceSQSUrl> <destinationSQSUrl>
 ```
