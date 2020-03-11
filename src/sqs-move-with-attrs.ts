@@ -49,6 +49,7 @@ export class SqsMoveWithAttrs {
      */
     private async moveJob(): Promise<number> {
 
+        // eslint-disable-next-line no-async-promise-executor
         return new Promise( async (resolve, reject) => {
 
             const sendRequest: SQS.SendMessageBatchRequest = {
@@ -105,6 +106,7 @@ export class SqsMoveWithAttrs {
 
                     this.reportProgress(response.Messages.length);
 
+                    // eslint-disable-next-line no-constant-condition
                 } while (true);
 
             } catch (err) {
