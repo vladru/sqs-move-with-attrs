@@ -7,8 +7,8 @@ export class SqsMoveWithAttrs {
     private readonly toSqsUrl: string;
 
     private processedMessagesCount: number;
-    private jobLaunchingCount: number;
     private receiveOptions: SQS.ReceiveMessageRequest;
+    private receiveMessageRequestCount: number;
 
     constructor(sqsClient: SQS, fromSqsUrl: string, toSqsUrl: string) {
         this.sqsClient = sqsClient;
@@ -26,7 +26,7 @@ export class SqsMoveWithAttrs {
         };
 
         this.processedMessagesCount = 0;
-        this.jobLaunchingCount = 0;
+        this.receiveMessageRequestCount = 0;
     }
 
     private reportProgress(numMessages: number): void {
@@ -44,63 +44,88 @@ export class SqsMoveWithAttrs {
         return source;
     };
 
-    private async moveJob(jobNum: number): Promise<void> {
-        // for Debugging
-        // if (++this.jobLaunchingCount > 100) {
-        //     return
-        // }
+    /**
+     * @return promise resolved with number of moved messages
+     */
+    private async moveJob(): Promise<number> {
 
-        let response: SQS.ReceiveMessageResult | null = await this.sqsClient.receiveMessage(this.receiveOptions).promise();
-        if (!response.Messages) {
-            return
-        }
+        return new Promise( async (resolve, reject) => {
 
-        let sendRequest: SQS.SendMessageBatchRequest | null = {
-            QueueUrl: this.toSqsUrl,
-            Entries: []
-        };
-        let deleteRequest: SQS.DeleteMessageBatchRequest | null = {
-            QueueUrl: this.fromSqsUrl,
-            Entries: []
-        };
+            const sendRequest: SQS.SendMessageBatchRequest = {
+                QueueUrl: this.toSqsUrl,
+                Entries: []
+            };
+            const deleteRequest: SQS.DeleteMessageBatchRequest = {
+                QueueUrl: this.fromSqsUrl,
+                Entries: []
+            };
 
-        let id = 0;
-        for (const message of response.Messages) {
-            if (message.Body && message.ReceiptHandle) {
-                id++;
-                const sendEntry: SQS.SendMessageBatchRequestEntry = {
-                    Id: ''+id,
-                    MessageBody: message.Body
-                };
-                if (message.MessageAttributes) {
-                    sendEntry.MessageAttributes = this.castMessageAttributes(message.MessageAttributes)
-                }
-                sendRequest.Entries.push(sendEntry);
-                deleteRequest.Entries.push({
-                    Id: ''+id,
-                    ReceiptHandle: message.ReceiptHandle
-                })
+            let movedMessagesCount = 0;
+
+            try {
+
+                do {
+                    // for Debugging
+                    // if (++this.receiveMessageRequestCount > 100) {
+                    //     resolve(movedMessagesCount);
+                    //     return
+                    // }
+
+                    const response: SQS.ReceiveMessageResult = await this.sqsClient.receiveMessage(this.receiveOptions).promise();
+                    console.log(JSON.stringify(response));
+                    if (!response.Messages) {
+                        resolve(movedMessagesCount);
+                        return
+                    }
+
+                    let id = 0;
+                    sendRequest.Entries = [];
+                    deleteRequest.Entries = [];
+                    for (const message of response.Messages) {
+                        if (message.Body && message.ReceiptHandle) {
+                            id++;
+                            const sendEntry: SQS.SendMessageBatchRequestEntry = {
+                                Id: ''+id,
+                                MessageBody: message.Body
+                            };
+                            if (message.MessageAttributes) {
+                                sendEntry.MessageAttributes = this.castMessageAttributes(message.MessageAttributes)
+                            }
+                            sendRequest.Entries.push(sendEntry);
+                            deleteRequest.Entries.push({
+                                Id: ''+id,
+                                ReceiptHandle: message.ReceiptHandle
+                            })
+                        }
+                    }
+
+                    await this.sqsClient.sendMessageBatch(sendRequest).promise();
+                    await this.sqsClient.deleteMessageBatch(deleteRequest).promise();
+                    movedMessagesCount += response.Messages.length;
+
+                    this.reportProgress(response.Messages.length);
+
+                } while (true);
+
+            } catch (err) {
+                reject(err)
             }
-        }
 
-        await this.sqsClient.sendMessageBatch(sendRequest).promise();
-        await this.sqsClient.deleteMessageBatch(deleteRequest).promise();
+        });
 
-        this.reportProgress(response.Messages.length);
-
-        // release memory before recursive call
-        sendRequest = null;
-        deleteRequest = null;
-        response = null;
-
-        return this.moveJob(jobNum);
     }
 
-    public async move(jobConcurrency= 50): Promise<void[]> {
-        const moveJobs: Promise<void>[] = [];
+    /**
+     * Do moving messages from source to destination queue
+     * @param jobConcurrency
+     * @return promise resolved with number of moved messages
+     */
+    public async move(jobConcurrency= 50): Promise<number> {
+        const moveJobs: Promise<number>[] = [];
         for (let i=0; i < jobConcurrency; i++) {
-            moveJobs.push(this.moveJob(i+1));
+            moveJobs.push(this.moveJob());
         }
-        return Promise.all(moveJobs)
+        const result = await Promise.all(moveJobs);
+        return result.reduce( (prevValue, currentValue) => { return prevValue + currentValue}, 0)
     }
 }

@@ -85,7 +85,7 @@ describe("test move method", () => {
     it ("should nothing to do if source SQS is empty", async () => {
         receiveMessageResponses = [];
         const sqsMove= new SqsMoveWithAttrs(sqsClient, "from", "to");
-        await sqsMove.move(5);
+        expect(await sqsMove.move(5)).to.equals(0);
         expect(receiveMessageSpy.callCount).to.equal(5);
         assert(sendMessageBatchSpy.notCalled);
     });
@@ -99,7 +99,7 @@ describe("test move method", () => {
             }];
 
         const sqsMove= new SqsMoveWithAttrs(sqsClient, "from", "to");
-        await sqsMove.move(4);
+        expect (await sqsMove.move(4)).to.equals(1);
 
         expect(receiveMessageSpy.callCount).to.equal(5);
         const receiveMessageRequest = receiveMessageSpy.args[0][0];
@@ -146,7 +146,9 @@ describe("test move method", () => {
         }
 
         const sqsMove= new SqsMoveWithAttrs(sqsClient, "from", "to");
-        await sqsMove.move(3);
+
+        expect(await sqsMove.move(3)).to.equals(15);
+
         expect(sendMessageBatchSpy.callCount).equals(5);
         expect(sendMessagesCount).to.equals(15);
         expect(deleteMessageBatchSpy.callCount).equals(5);
