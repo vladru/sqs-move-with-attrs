@@ -73,7 +73,6 @@ export class SqsMoveWithAttrs {
                     // }
 
                     const response: SQS.ReceiveMessageResult = await this.sqsClient.receiveMessage(this.receiveOptions).promise();
-                    console.log(JSON.stringify(response));
                     if (!response.Messages) {
                         resolve(movedMessagesCount);
                         return
