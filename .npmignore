@@ -2,7 +2,9 @@
 *.iml
 .nyc_output
 .coveralls.yml
+.travis.yml
 dist/cli.d.ts
+src/
 coverage/
 node_modules/
 reports/

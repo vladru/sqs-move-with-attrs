@@ -22,6 +22,7 @@
         "aws",
         "sqs",
         "move",
+        "messages",
         "typescript"
     ],
     "bugs": {

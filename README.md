@@ -21,7 +21,7 @@ yarn global add sqs-move-with-attrs
 ```
 ### Install to local directory
 Clone project repository from github to the local folder and run
-```
+```.env
 yarn install
 ```
 ## Configuration
@@ -38,4 +38,33 @@ sqs-move-with-attrs <sourceSQSUrl> <destinationSQSUrl>
 ### if project installed to local directory
 ```
 yarn move <sourceSQSUrl> <destinationSQSUrl>
+```
+### Example of using from Node.js/Typescript
+Node.js
+```js
+const {SQS} = require("aws-sdk");
+const {SqsMoveWithAttrs} = require("sqs-move-with-attrs");
+...
+```
+Typescript
+```typescript
+import {SQS} from "aws-sdk"
+import {SqsMoveWithAttrs} from "sqs-move-with-attrs";
+...
+```
+common part of script
+```typescript
+const sqsClient = new SQS({region:'us-east-1'});
+const sqsMoveWithAttrs = new SqsMoveWithAttrs(
+    sqsClient,
+    "https://sqs.us-east-1.amazonaws.com/<accountId>/sqs-name-dlq",
+    "https://sqs.us-east-1.amazonaws.com/<accountId>/sqs-name");
+(async () => {
+    try {
+        await sqsMoveWithAttrs.move();
+    } catch (err) {
+        console.error(err);
+        process.exit(-1)
+    }
+})();
 ```
