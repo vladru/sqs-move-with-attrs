@@ -1,6 +1,6 @@
 {
     "name": "sqs-move-with-attrs",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "Move messages including its attributes from one AWS SQS queue to another.",
     "engines": {
         "node": ">8.10"
