@@ -4,11 +4,19 @@ export declare class SqsMoveWithAttrs {
     private readonly fromSqsUrl;
     private readonly toSqsUrl;
     private processedMessagesCount;
-    private jobLaunchingCount;
     private receiveOptions;
+    private receiveMessageRequestCount;
     constructor(sqsClient: SQS, fromSqsUrl: string, toSqsUrl: string);
     private reportProgress;
     private castMessageAttributes;
+    /**
+     * @return promise resolved with number of moved messages
+     */
     private moveJob;
-    move(jobConcurrency?: number): Promise<void[]>;
+    /**
+     * Do moving messages from source to destination queue
+     * @param jobConcurrency
+     * @return promise resolved with number of moved messages
+     */
+    move(jobConcurrency?: number): Promise<number>;
 }
