@@ -81,7 +81,7 @@ describe("run cli script with missed AWS_REGION", () => {
         const consoleErrorSpy = sinon.spy(console, "error");
 
         await import("../src/cli");
-        // short pause is required to fulfill console.error call
+        // short pause is required to reject create new SQS instance request
         await new Promise( (resolve) => {
            setTimeout(resolve, 300);
         });
@@ -97,11 +97,41 @@ describe("run cli script with missed AWS_REGION", () => {
 
 });
 
+describe("run cli script with unavailable queue", () => {
+
+    beforeEach( () => {
+        resetModuleCache();
+    });
+
+    it("should exit with -1 code and display error", async () => {
+        // const envStub = sinon.stub(process, 'env').returns({AWS_REGION: "us-east-1"});
+        process.env.AWS_REGION = "us-east-1";
+        const argvStub = sinon.stub(process,'argv').value(
+            ["1", "2", "https://sqs.us-east-1.amazonaws.com/0/fake-dlq", testDestSqsUrl]);
+        const consoleErrorSpy = sinon.spy(console, "error");
+
+        await import("../src/cli");
+        // short pause is required to reject receive message request
+        await new Promise( (resolve) => {
+            setTimeout(resolve, 1000);
+        });
+
+        assert(consoleErrorSpy.calledOnce);
+        expect(process.exitCode).equals(-1);
+
+        process.exitCode = 0;
+        consoleErrorSpy.restore();
+        // envStub.restore();
+        argvStub.restore();
+    });
+
+});
+
 describe("run cli script with valid arguments", () => {
 
     let sqsStub: sinon.SinonStub;
     let sqsMoveConstructorStub: sinon.SinonStub;
-    const moveStub = sinon.stub().resolves();
+    const moveStub = sinon.stub().resolves(1);
 
     before( () => {
         sqsStub = sinon.stub(AwsSdk, "SQS");

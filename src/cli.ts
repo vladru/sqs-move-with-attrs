@@ -35,9 +35,9 @@ const toSqsUrl = process.argv[3];
         const sqsClient = new SQS();
         const sqsMove = new SqsMoveWithAttrs(sqsClient, fromSqsUrl, toSqsUrl);
         const startTime = new Date().getTime();
-        await sqsMove.move();
+        const movedMessagesCount = await sqsMove.move();
         const endTime = new Date().getTime();
-        console.log("\nProcessing time: %d sec.", Math.round((endTime-startTime)/1000))
+        console.log("%d messages have been moved within %d sec.", movedMessagesCount, Math.round((endTime-startTime)/1000))
     } catch (e) {
         if (e.message === "Missing region in config") {
             console.error(e.message);
