@@ -104,16 +104,15 @@ describe("run cli script with unavailable queue", () => {
     });
 
     it("should exit with -1 code and display error", async () => {
-        // const envStub = sinon.stub(process, 'env').returns({AWS_REGION: "us-east-1"});
         process.env.AWS_REGION = "us-east-1";
         const argvStub = sinon.stub(process,'argv').value(
             ["1", "2", "https://sqs.us-east-1.amazonaws.com/0/fake-dlq", testDestSqsUrl]);
-        const consoleErrorSpy = sinon.spy(console, "error");
+        const consoleErrorSpy = sinon.stub(console, "error");
 
         await import("../src/cli");
         // short pause is required to reject receive message request
         await new Promise( (resolve) => {
-            setTimeout(resolve, 1000);
+            setTimeout(resolve, 3000);
         });
 
         assert(consoleErrorSpy.calledOnce);
@@ -121,9 +120,8 @@ describe("run cli script with unavailable queue", () => {
 
         process.exitCode = 0;
         consoleErrorSpy.restore();
-        // envStub.restore();
         argvStub.restore();
-    });
+    }).timeout(5000);
 
 });
 
