@@ -1,5 +1,8 @@
 import {SQS} from "aws-sdk";
 
+// https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SendMessageBatch.html
+const MAX_SEND_MESSAGE_PAYLOAD_SIZE_BYTES =256*1024;
+
 export class SqsMoveWithAttrs {
 
     private readonly sqsClient: SQS;
@@ -44,6 +47,18 @@ export class SqsMoveWithAttrs {
         return source;
     };
 
+    private createSendMessageBatchRequest = (): SQS.SendMessageBatchRequest => {
+      return {
+          QueueUrl: this.toSqsUrl,
+          Entries: []
+      }
+    };
+
+    private getSendEntrySizeInBytes = (entry: SQS.SendMessageBatchRequestEntry): number => {
+        const str = JSON.stringify(entry);
+        return Buffer.byteLength(str, "utf-8")
+    };
+
     /**
      * @return promise resolved with number of moved messages
      */
@@ -52,10 +67,6 @@ export class SqsMoveWithAttrs {
         // eslint-disable-next-line no-async-promise-executor
         return new Promise( async (resolve, reject) => {
 
-            const sendRequest: SQS.SendMessageBatchRequest = {
-                QueueUrl: this.toSqsUrl,
-                Entries: []
-            };
             const deleteRequest: SQS.DeleteMessageBatchRequest = {
                 QueueUrl: this.fromSqsUrl,
                 Entries: []
@@ -79,7 +90,9 @@ export class SqsMoveWithAttrs {
                     }
 
                     let id = 0;
-                    sendRequest.Entries = [];
+                    const sendRequests: SQS.SendMessageBatchRequest[] = [];
+                    let sendRequest = this.createSendMessageBatchRequest();
+                    let sendRequestPayloadSize = 0;
                     deleteRequest.Entries = [];
                     for (const message of response.Messages) {
                         if (message.Body && message.ReceiptHandle) {
@@ -91,6 +104,13 @@ export class SqsMoveWithAttrs {
                             if (message.MessageAttributes) {
                                 sendEntry.MessageAttributes = this.castMessageAttributes(message.MessageAttributes)
                             }
+                            const sendEntrySize = this.getSendEntrySizeInBytes(sendEntry);
+                            if (sendRequestPayloadSize + sendEntrySize > MAX_SEND_MESSAGE_PAYLOAD_SIZE_BYTES) {
+                                sendRequests.push(sendRequest);
+                                sendRequest = this.createSendMessageBatchRequest();
+                                sendRequestPayloadSize = 0;
+                            }
+                            sendRequestPayloadSize += sendEntrySize;
                             sendRequest.Entries.push(sendEntry);
                             deleteRequest.Entries.push({
                                 Id: ''+id,
@@ -99,7 +119,10 @@ export class SqsMoveWithAttrs {
                         }
                     }
 
-                    await this.sqsClient.sendMessageBatch(sendRequest).promise();
+                    sendRequests.push(sendRequest);
+                    for (const request of sendRequests) {
+                        await this.sqsClient.sendMessageBatch(request).promise();
+                    }
                     await this.sqsClient.deleteMessageBatch(deleteRequest).promise();
                     movedMessagesCount += response.Messages.length;
 

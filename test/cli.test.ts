@@ -26,7 +26,7 @@ describe("run cli script with invalid arguments", () => {
         processExitStub = sinon.stub(process, 'exit');
         sqsMoveConstructorStub = sinon.stub(SqsMoveClass, "SqsMoveWithAttrs")
             .returns({
-                move: sinon.stub().resolves()
+                move: sinon.stub().resolves(1)
             });
     });
 
