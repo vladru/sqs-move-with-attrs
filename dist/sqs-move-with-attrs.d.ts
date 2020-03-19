@@ -9,6 +9,8 @@ export declare class SqsMoveWithAttrs {
     constructor(sqsClient: SQS, fromSqsUrl: string, toSqsUrl: string);
     private reportProgress;
     private castMessageAttributes;
+    private createSendMessageBatchRequest;
+    private getSendEntrySizeInBytes;
     /**
      * @return promise resolved with number of moved messages
      */

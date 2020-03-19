@@ -26,6 +26,12 @@ describe("test move method", () => {
         }
     };
 
+    const createBigMessage = (): SQS.Message => {
+        const message = createMessage();
+        message.Body = "Long string".repeat(256*1024/8).substr(0, 254*1024);
+        return message
+    };
+
     let receiveMessageResponses: SQS.ReceiveMessageResult[];
     const getReceiveMessageResponse = (callNum: number): SQS.ReceiveMessageResult  => {
         if (callNum > receiveMessageResponses.length) {
@@ -153,6 +159,20 @@ describe("test move method", () => {
         expect(sendMessagesCount).to.equals(15);
         expect(deleteMessageBatchSpy.callCount).equals(5);
         expect(deletedMessagesCount).to.equals(15);
-    })
+    });
+
+    it ("should send big messages in separate send requests", async () => {
+        receiveMessageResponses = [
+            {
+                Messages: [
+                    createBigMessage(),
+                    createBigMessage()
+                ]
+            }];
+
+        const sqsMove= new SqsMoveWithAttrs(sqsClient, "from", "to");
+        expect (await sqsMove.move(4)).to.equals(2);
+        expect(sendMessageBatchSpy.callCount).equals(2);
+    });
 
 });
