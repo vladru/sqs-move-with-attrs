@@ -1,3 +1,5 @@
+'use strict';
+
 import {SQS} from "aws-sdk";
 
 // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SendMessageBatch.html
@@ -9,9 +11,9 @@ export class SqsMoveWithAttrs {
     private readonly fromSqsUrl: string;
     private readonly toSqsUrl: string;
 
-    private processedMessagesCount: number;
+    private receivedMessagesCount: number;
+    private movedMessagesCount: number;
     private receiveOptions: SQS.ReceiveMessageRequest;
-    private receiveMessageRequestCount: number;
 
     constructor(sqsClient: SQS, fromSqsUrl: string, toSqsUrl: string) {
         this.sqsClient = sqsClient;
@@ -28,13 +30,14 @@ export class SqsMoveWithAttrs {
             WaitTimeSeconds: 0
         };
 
-        this.processedMessagesCount = 0;
-        this.receiveMessageRequestCount = 0;
+        this.receivedMessagesCount = 0;
+        this.movedMessagesCount = 0;
     }
 
-    private reportProgress(numMessages: number): void {
-        this.processedMessagesCount += numMessages;
-        process.stdout.write("\rMessages moved:"+this.processedMessagesCount);
+    private reportProgress(receivedMessages: number, movedMessages: number): void {
+        this.receivedMessagesCount += receivedMessages;
+        this.movedMessagesCount += movedMessages;
+        process.stdout.write("\rMessages received "+this.receivedMessagesCount+", moved "+this.movedMessagesCount);
     }
 
     private castMessageAttributes = (source: SQS.MessageBodyAttributeMap): SQS.MessageBodyAttributeMap => {
@@ -64,78 +67,74 @@ export class SqsMoveWithAttrs {
      */
     private async moveJob(): Promise<number> {
 
-        // eslint-disable-next-line no-async-promise-executor
-        return new Promise( async (resolve, reject) => {
+        const deleteRequest: SQS.DeleteMessageBatchRequest = {
+            QueueUrl: this.fromSqsUrl,
+            Entries: []
+        };
 
-            const deleteRequest: SQS.DeleteMessageBatchRequest = {
-                QueueUrl: this.fromSqsUrl,
-                Entries: []
-            };
+        let movedMessagesCount = 0;
 
-            let movedMessagesCount = 0;
+        do {
 
-            try {
-
-                do {
-                    // for Debugging
-                    // if (++this.receiveMessageRequestCount > 100) {
-                    //     resolve(movedMessagesCount);
-                    //     return
-                    // }
-
-                    const response: SQS.ReceiveMessageResult = await this.sqsClient.receiveMessage(this.receiveOptions).promise();
-                    if (!response.Messages) {
-                        resolve(movedMessagesCount);
-                        return
-                    }
-
-                    let id = 0;
-                    const sendRequests: SQS.SendMessageBatchRequest[] = [];
-                    let sendRequest = this.createSendMessageBatchRequest();
-                    let sendRequestPayloadSize = 0;
-                    deleteRequest.Entries = [];
-                    for (const message of response.Messages) {
-                        if (message.Body && message.ReceiptHandle) {
-                            id++;
-                            const sendEntry: SQS.SendMessageBatchRequestEntry = {
-                                Id: ''+id,
-                                MessageBody: message.Body
-                            };
-                            if (message.MessageAttributes) {
-                                sendEntry.MessageAttributes = this.castMessageAttributes(message.MessageAttributes)
-                            }
-                            const sendEntrySize = this.getSendEntrySizeInBytes(sendEntry);
-                            if (sendRequestPayloadSize + sendEntrySize > MAX_SEND_MESSAGE_PAYLOAD_SIZE_BYTES) {
-                                sendRequests.push(sendRequest);
-                                sendRequest = this.createSendMessageBatchRequest();
-                                sendRequestPayloadSize = 0;
-                            }
-                            sendRequestPayloadSize += sendEntrySize;
-                            sendRequest.Entries.push(sendEntry);
-                            deleteRequest.Entries.push({
-                                Id: ''+id,
-                                ReceiptHandle: message.ReceiptHandle
-                            })
-                        }
-                    }
-
-                    sendRequests.push(sendRequest);
-                    for (const request of sendRequests) {
-                        await this.sqsClient.sendMessageBatch(request).promise();
-                    }
-                    await this.sqsClient.deleteMessageBatch(deleteRequest).promise();
-                    movedMessagesCount += response.Messages.length;
-
-                    this.reportProgress(response.Messages.length);
-
-                    // eslint-disable-next-line no-constant-condition
-                } while (true);
-
-            } catch (err) {
-                reject(err)
+            const receiveBatchResponse: SQS.ReceiveMessageResult = await this.sqsClient.receiveMessage(this.receiveOptions).promise();
+            if (!receiveBatchResponse.Messages) {
+                return movedMessagesCount
             }
 
-        });
+            let id = 0;
+            const sendRequests: SQS.SendMessageBatchRequest[] = [];
+            let sendRequest = this.createSendMessageBatchRequest();
+            let sendRequestPayloadSize = 0;
+            deleteRequest.Entries = [];
+            for (const message of receiveBatchResponse.Messages) {
+                if (message.Body && message.ReceiptHandle) {
+                    id++;
+                    const sendEntry: SQS.SendMessageBatchRequestEntry = {
+                        Id: ''+id,
+                        MessageBody: message.Body
+                    };
+                    if (message.MessageAttributes) {
+                        sendEntry.MessageAttributes = this.castMessageAttributes(message.MessageAttributes)
+                    }
+                    const sendEntrySize = this.getSendEntrySizeInBytes(sendEntry);
+                    if (sendRequestPayloadSize + sendEntrySize > MAX_SEND_MESSAGE_PAYLOAD_SIZE_BYTES) {
+                        sendRequests.push(sendRequest);
+                        sendRequest = this.createSendMessageBatchRequest();
+                        sendRequestPayloadSize = 0;
+                    }
+                    sendRequestPayloadSize += sendEntrySize;
+                    sendRequest.Entries.push(sendEntry);
+                    deleteRequest.Entries.push({
+                        Id: ''+id,
+                        ReceiptHandle: message.ReceiptHandle
+                    })
+                }
+            }
+
+            sendRequests.push(sendRequest);
+            const failedIds: string[] = [];
+            for (const request of sendRequests) {
+                const sendBatchResponse = await this.sqsClient.sendMessageBatch(request).promise();
+                sendBatchResponse.Failed.forEach( (entry) => {
+                    console.error(" Send message failure: %s, error code %s", entry.Message, entry.Code);
+                    failedIds.push(entry.Id)
+                })
+            }
+            // delete failed IDs from deleteRequest.Entries
+            failedIds.forEach( failedId => {
+                const deleteEntryIndex = deleteRequest.Entries.findIndex( it => it.Id === failedId);
+                if (deleteEntryIndex > -1) {
+                    deleteRequest.Entries.splice(deleteEntryIndex,1)
+                }
+            });
+
+            await this.sqsClient.deleteMessageBatch(deleteRequest).promise();
+
+            movedMessagesCount += deleteRequest.Entries.length;
+            this.reportProgress(receiveBatchResponse.Messages.length, movedMessagesCount);
+
+            // eslint-disable-next-line no-constant-condition
+        } while (true);
 
     }
 

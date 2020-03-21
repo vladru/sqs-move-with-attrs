@@ -2,7 +2,11 @@
 *.iml
 .nyc_output
 .coveralls.yml
-dist/cli.d.ts
+dist/
+!dist/sqs-move-with-attrs.d.ts
+!dist/sqs-move-with-attrs.js
+!dist/cli.js
+!dist/utils.js
 coverage/
 node_modules/
 reports/

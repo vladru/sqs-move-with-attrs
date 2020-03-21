@@ -45,14 +45,14 @@ describe("test move method", () => {
     });
 
     let sendMessagesCount: number;
+    const sendMessageResponse: SQS.SendMessageBatchResult = {
+        Successful: [],
+        Failed: []
+    };
     const sendMessageBatchSpy = sinon.spy((params: SQS.SendMessageBatchRequest, callback: Function): void =>
     {
         sendMessagesCount += params.Entries.length;
-        const response: SQS.SendMessageBatchResult = {
-            Successful: [],
-            Failed: []
-        };
-        callback(null, response)
+        callback(null, sendMessageResponse)
     });
 
     let deletedMessagesCount: number;
@@ -174,5 +174,35 @@ describe("test move method", () => {
         expect (await sqsMove.move(4)).to.equals(2);
         expect(sendMessageBatchSpy.callCount).equals(2);
     });
+
+    it ("should delete messages which were sent successfully only", async () => {
+        receiveMessageResponses = [
+            {
+                Messages: [
+                    createMessage(),
+                    createMessage(),
+                    createMessage(),
+                    createMessage(),
+                    createMessage(),
+                    createMessage(),
+                ]
+            }];
+        sendMessageResponse.Failed = [{
+            Id: "2",
+            Code: "TEST",
+            SenderFault: false,
+            Message: "Test error"
+        }, {
+            Id: "5",
+            Code: "TEST",
+            SenderFault: false,
+            Message: "Test error"
+        }];
+
+        const sqsMove= new SqsMoveWithAttrs(sqsClient, "from", "to");
+        expect (await sqsMove.move(4)).to.equals(4);
+        expect(sendMessageBatchSpy.callCount).equals(1);
+        expect(deletedMessagesCount).to.equals(4);
+    })
 
 });
