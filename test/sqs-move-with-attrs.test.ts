@@ -1,6 +1,4 @@
-import AwsSdkMock from 'aws-sdk-mock';
 import AwsSdk from "aws-sdk"
-AwsSdkMock.setSDKInstance(AwsSdk);
 
 import {assert, expect} from "chai";
 
@@ -39,9 +37,13 @@ describe("test move method", () => {
         }
         return receiveMessageResponses[callNum-1]
     };
-    const receiveMessageSpy = sinon.spy((params: SQS.ReceiveMessageRequest, callback: Function): void =>
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const receiveMessageSpy = sinon.spy((params: SQS.ReceiveMessageRequest) =>
     {
-        callback(null, getReceiveMessageResponse(receiveMessageSpy.callCount))
+        return {
+            // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+            promise: () => Promise.resolve(getReceiveMessageResponse(receiveMessageSpy.callCount))
+        }
     });
 
     let sendMessagesCount: number;
@@ -49,35 +51,45 @@ describe("test move method", () => {
         Successful: [],
         Failed: []
     };
-    const sendMessageBatchSpy = sinon.spy((params: SQS.SendMessageBatchRequest, callback: Function): void =>
+    const sendMessageBatchSpy = sinon.spy((params: SQS.SendMessageBatchRequest) =>
     {
         sendMessagesCount += params.Entries.length;
-        callback(null, sendMessageResponse)
+        return {
+            // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+            promise: () => Promise.resolve(sendMessageResponse)
+        }
     });
 
     let deletedMessagesCount: number;
-    const deleteMessageBatchSpy = sinon.spy((params: SQS.DeleteMessageBatchRequest, callback: Function): void =>
+    const deleteMessageBatchSpy = sinon.spy((params: SQS.DeleteMessageBatchRequest) =>
     {
         deletedMessagesCount += params.Entries.length;
         const response: SQS.DeleteMessageBatchResult = {
             Successful: [],
             Failed: []
         };
-        callback(null, response)
+        return {
+            // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+            promise: () => Promise.resolve(response)
+        }
     });
 
     let sqsClient: SQS;
+    let sqsStub: sinon.SinonStub;
 
     before( () => {
-        AwsSdkMock.mock("SQS", "receiveMessage", receiveMessageSpy);
-        AwsSdkMock.mock("SQS", "sendMessageBatch", sendMessageBatchSpy);
-        AwsSdkMock.mock("SQS", "deleteMessageBatch", deleteMessageBatchSpy);
+        sqsStub = sinon.stub(AwsSdk, "SQS")
+            .returns({
+                receiveMessage: receiveMessageSpy,
+                sendMessageBatch: sendMessageBatchSpy,
+                deleteMessageBatch: deleteMessageBatchSpy
+            });
 
-        sqsClient = new SQS({region: "us-east-1"});
+        sqsClient = new SQS();
     });
 
     after( () => {
-       AwsSdkMock.restore()
+       sqsStub.restore()
     });
 
     beforeEach( () => {
