@@ -10,8 +10,15 @@ Expected moving performance is 10K messages per minute.
 - Node.js 8.10 or later
 - optionally yarn 1 or later
 
+## Features
+
+- Batch messages processing and concurrent promises fulfillment provide high performance
+- Messages are deleting from source queue only if they have been successfully sent to destination queue
+- Message attributes are copied over
+- CLI tool supports SQS names instead of full URLs
+
 ## Install
-### Install as command line utility
+### Install as Command Line Interface (CLI) tool 
 ```
 npm install -g sqs-move-with-attrs
 ```
@@ -26,18 +33,22 @@ yarn install
 ```
 ## Configuration
 
-Empty configuration object and Default Credential Provider chain are used to create AWS SQS client.
+Empty configuration object and Default Credential Provider chain are used in CLI to create AWS SQS client.
 
-Define AWS_REGION environment variable to specify region used by AWS SDK.   
+AWS credentials and AWS region configuration should be supplied to SDK
+either through [shared credentials file](https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/loading-node-credentials-shared.html) / [shared config file](https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/setting-region.html)
+either through [environment variables](https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/loading-node-credentials-environment.html). 
+
+If AWS region not specified in AWS config file please define it via AWS_REGION environment variable.   
 
 ## Usage
-### if project installed as command line utility
+### if module installed as CLI tool
 ```
-sqs-move-with-attrs <sourceSQSUrl> <destinationSQSUrl>
+sqs-move-with-attrs <source_SQS_URL_or_name> <destination_SQS_URL_or_name>
 ```
-### if project installed to local directory
+### if module installed to local directory
 ```
-yarn move <sourceSQSUrl> <destinationSQSUrl>
+yarn move <source_SQS_URL_or_name> <destination_SQS_URL_or_name>
 ```
 ### Example of using from Node.js/Typescript
 Node.js
