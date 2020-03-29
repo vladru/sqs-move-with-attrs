@@ -83,10 +83,18 @@ const resolveSqsUrl = async (sqsUrlOrName: string): Promise<ResolveSqsUrlResult>
 
         const sqsClient = new SQS();
         const sqsMove = new SqsMoveWithAttrs(sqsClient, fromSqsUrl, toSqsUrl);
+        let receivedMessagesCount  = 0;
+        let movedMessagesCount = 0;
+        sqsMove.on("progress", (receivedMessages: number, movedMessages: number) => {
+            receivedMessagesCount += receivedMessages;
+            movedMessagesCount += movedMessages;
+            process.stdout.write("\rMessages received "+receivedMessagesCount+", moved "+movedMessagesCount);
+
+        });
         const startTime = new Date().getTime();
-        const movedMessagesCount = await sqsMove.move();
+        const movedMessagesTotal = await sqsMove.move();
         const endTime = new Date().getTime();
-        console.log("\r%d messages have been moved within %d sec.", movedMessagesCount, Math.round((endTime-startTime)/1000))
+        console.log("\r%d messages have been moved within %d sec.", movedMessagesTotal, Math.round((endTime-startTime)/1000))
 
     } catch (e) {
         console.error(e);

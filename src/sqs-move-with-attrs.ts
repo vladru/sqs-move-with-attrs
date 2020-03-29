@@ -1,21 +1,26 @@
 'use strict';
 
 import {SQS} from "aws-sdk";
+import {EventEmitter} from "events"
 
 // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SendMessageBatch.html
-const MAX_SEND_MESSAGE_PAYLOAD_SIZE_BYTES =256*1024;
+const MAX_SEND_MESSAGE_PAYLOAD_SIZE_BYTES = 256*1024;
 
-export class SqsMoveWithAttrs {
+export declare interface SqsMoveWithAttrs {
+    on(event: 'progress', listener: (receivedMessages: number, movedMessages: number) => void): this;
+    on(event: string, listener: Function): this;
+}
+
+export class SqsMoveWithAttrs extends EventEmitter{
 
     private readonly sqsClient: SQS;
     private readonly fromSqsUrl: string;
     private readonly toSqsUrl: string;
 
-    private receivedMessagesCount: number;
-    private movedMessagesCount: number;
     private receiveOptions: SQS.ReceiveMessageRequest;
 
     constructor(sqsClient: SQS, fromSqsUrl: string, toSqsUrl: string) {
+        super();
         this.sqsClient = sqsClient;
         this.fromSqsUrl = fromSqsUrl;
         this.toSqsUrl = toSqsUrl;
@@ -30,14 +35,10 @@ export class SqsMoveWithAttrs {
             WaitTimeSeconds: 0
         };
 
-        this.receivedMessagesCount = 0;
-        this.movedMessagesCount = 0;
     }
 
     private reportProgress(receivedMessages: number, movedMessages: number): void {
-        this.receivedMessagesCount += receivedMessages;
-        this.movedMessagesCount += movedMessages;
-        process.stdout.write("\rMessages received "+this.receivedMessagesCount+", moved "+this.movedMessagesCount);
+        this.emit("progress", receivedMessages, movedMessages);
     }
 
     private castMessageAttributes = (source: SQS.MessageBodyAttributeMap): SQS.MessageBodyAttributeMap => {
@@ -131,7 +132,7 @@ export class SqsMoveWithAttrs {
             await this.sqsClient.deleteMessageBatch(deleteRequest).promise();
 
             movedMessagesCount += deleteRequest.Entries.length;
-            this.reportProgress(receiveBatchResponse.Messages.length, movedMessagesCount);
+            this.reportProgress(receiveBatchResponse.Messages.length, deleteRequest.Entries.length);
 
             // eslint-disable-next-line no-constant-condition
         } while (true);

@@ -1,10 +1,14 @@
+/// <reference types="node" />
 import { SQS } from "aws-sdk";
-export declare class SqsMoveWithAttrs {
+import { EventEmitter } from "events";
+export declare interface SqsMoveWithAttrs {
+    on(event: 'progress', listener: (receivedMessages: number, movedMessages: number) => void): this;
+    on(event: string, listener: Function): this;
+}
+export declare class SqsMoveWithAttrs extends EventEmitter {
     private readonly sqsClient;
     private readonly fromSqsUrl;
     private readonly toSqsUrl;
-    private receivedMessagesCount;
-    private movedMessagesCount;
     private receiveOptions;
     constructor(sqsClient: SQS, fromSqsUrl: string, toSqsUrl: string);
     private reportProgress;

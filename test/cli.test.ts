@@ -160,13 +160,15 @@ describe("run cli script with valid arguments", () => {
     let testAccountId: string | undefined;
 
     const moveStub = sinon.stub().resolves(1);
+    const onStub = sinon.stub();
 
     before( () => {
         utilsStub = sinon.stub(Utils, "getCurrentAwsRegion").returns("us-east-1");
         sqsStub = sinon.stub(AwsSdk, "SQS");
         sqsMoveConstructorStub = sinon.stub(SqsMoveClass, "SqsMoveWithAttrs")
             .returns({
-                move: moveStub
+                move: moveStub,
+                on: onStub
             });
         stsStub = sinon.stub(AwsSdk, "STS")
             .returns({
@@ -191,6 +193,7 @@ describe("run cli script with valid arguments", () => {
         resetModuleCache();
         sqsMoveConstructorStub.resetHistory();
         moveStub.resetHistory();
+        onStub.resetHistory();
         testAccountId = "TestAccountId"
     });
 
@@ -238,7 +241,25 @@ describe("run cli script with valid arguments", () => {
 
         process.exitCode = 0;
         argvStub.restore();
+    });
 
+    it ("should handle 'progress' event", async () => {
+        const argvStub = sinon.stub(process, 'argv').value(["1", "2", "source", "destination"]);
+        const stdOutWriteSpy = sinon.spy(process.stdout, 'write');
+
+        await import("../src/cli");
+        await delay();
+
+        assert(onStub.calledOnce);
+        const eventName: string = onStub.args[0][0];
+        expect(eventName).to.equals("progress");
+
+        const onFunc: Function = onStub.args[0][1];
+        expect(onFunc(5,5)).to.undefined;
+        expect(stdOutWriteSpy.lastCall.lastArg).to.equals("\rMessages received 5, moved 5");
+
+        stdOutWriteSpy.restore();
+        argvStub.restore();
     })
 
 });
